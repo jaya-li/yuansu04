@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="it">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -1547,7 +1547,7 @@
 </head>
 <body>
   <!-- 与完成页共用底图：在 #device 上加 style="--nuj-bg-image:url(…)" 或 --done-bg-image（需含 url()） -->
-  <div class="device" id="device" data-node-id="1474:55477" data-name="NUJ 模板">
+  <div class="device" id="device" data-node-id="1474:55477" data-name="NUJ onboarding">
     <section class="auth-screen" id="auth-screen" aria-label="Registrazione">
       <div class="auth-status">
         <span class="auth-time">9:41</span>
@@ -2237,17 +2237,17 @@
         return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
       }
 
-      function thumbMediaHtml(card, size) {
+      function thumbMediaHtml(card, size, canPlayVideo) {
         const thumbs =
           size === "sm" ? card.thumbsSm : size === "md" ? card.thumbsMd : card.thumbsLg;
         const posterSrc = (card.posterUrl || "").trim() || thumbs[0];
         const video = (card.videoUrl || "").trim();
-        if (video) {
+        if (video && canPlayVideo) {
           return `<video class="thumb-media thumb-video" playsinline muted loop autoplay preload="metadata" poster="${escapeHtml(posterSrc)}">` +
             `<source src="${escapeHtml(video)}" type="video/mp4" />` +
             `</video>`;
         }
-        return thumbHtml(thumbs);
+        return `<img class="thumb-media" src="${escapeHtml(posterSrc)}" alt="" draggable="false" />`;
       }
 
       function wireCardDom(layerEl) {
@@ -2285,9 +2285,10 @@
               ? String(card.thumbMockFilter)
               : thumbMockFilterForId(card.id);
         const thumbStyle = thumbMock ? ` style="--thumb-mock-filter: ${thumbMock}"` : "";
+        const canPlayVideo = size === "lg";
         return `
 <article class="${cls}" data-card-id="${card.id}">
-  <div class="thumb" aria-hidden="true"${thumbStyle}>${thumbMediaHtml(card, size)}</div>
+  <div class="thumb" aria-hidden="true"${thumbStyle}>${thumbMediaHtml(card, size, canPlayVideo)}</div>
   <div class="video-info">
     <p class="caption">${escapeHtml(card.caption)}</p>
     <div class="meta-row">
