@@ -653,16 +653,22 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
-      align-items: flex-start;
+      align-items: stretch;
     }
 
     .title {
       margin: 0;
+      width: 100%;
       font-weight: 700;
-      font-size: 32px;
+      font-size: var(--title-font-size, 32px);
       line-height: 1.2;
       letter-spacing: 0;
       color: var(--ui-text-1-display);
+      text-align: center;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
     }
 
     /* —— Card stack：完成层绝对叠在同一 content 内，便于与底图联动过渡 —— */
@@ -682,9 +688,10 @@
       --deck-zoom: 1.2;
       position: relative;
       width: 100%;
-      max-width: 326px;
+      max-width: none;
       flex: 0 0 auto;
-      min-height: clamp(380px, 44dvh, 520px);
+      min-height: 0;
+      height: var(--deck-stage-height, 480px);
       margin-top: 4px;
       overflow: visible;
       z-index: 2;
@@ -2119,6 +2126,7 @@
       const completionPanel = document.getElementById("completion-panel");
       const btnContinue = document.getElementById("btn-continue");
       const dismissBtns = document.querySelectorAll(".js-card-dismiss");
+      const headingTitle = document.querySelector(".title");
       const navSkip = document.getElementById("nav-skip");
       const navBack = document.getElementById("nav-back");
       const authScreen = document.getElementById("auth-screen");
@@ -2171,15 +2179,69 @@
 
       function updateCardScale() {
         if (!contentEl || !stackEl) return;
+        const frontCard = layerFront ? layerFront.querySelector(".video-card") : null;
+        const firstCardHeight = frontCard ? frontCard.offsetHeight : 398;
+        const firstCardWidth = frontCard ? frontCard.offsetWidth : 286;
+        const deckZoom = 1.2;
+        const deckTopLift = 24;
+        const deckSideExtra = 26;
+
+        const contentHeight = contentEl.clientHeight;
+        const deviceWidth = deviceEl ? deviceEl.clientWidth : 390;
         const contentStyles = getComputedStyle(contentEl);
         const padTop = parseFloat(contentStyles.paddingTop) || 0;
         const padBottom = parseFloat(contentStyles.paddingBottom) || 0;
-        const available = contentEl.clientHeight - padTop - padBottom;
-        const baseHeight = 480;
-        const zoom = 1.2;
-        // Keep visual gaps safe after zoom by budgeting scaled deck height.
-        const scale = Math.max(0.55, Math.min(1, available / (baseHeight * zoom)));
+        const availableHeight = Math.max(0, contentHeight - padTop - padBottom);
+
+        const sideGap =
+          deviceWidth <= 390
+            ? 32
+            : Math.min(52, 32 + ((deviceWidth - 390) * 20) / 90);
+        const availableWidth = Math.max(0, deviceWidth - sideGap * 2);
+
+        // Baseline uses the first(front) card box size; box metrics ignore shadow naturally.
+        const baseStackHeight = firstCardHeight * deckZoom + deckTopLift;
+        const baseStackWidth = firstCardWidth * deckZoom + deckSideExtra;
+        const scaleFromHeight = availableHeight > 0 ? (availableHeight / baseStackHeight) * 1.08 : 1;
+        const scaleFromWidth = availableWidth > 0 ? availableWidth / baseStackWidth : 1;
+        const scale = Math.max(0.5, Math.min(1.85, scaleFromHeight, scaleFromWidth));
+
         stackEl.style.setProperty("--deck-scale", String(scale));
+        stackEl.style.setProperty("--deck-stage-height", (baseStackHeight * scale).toFixed(2) + "px");
+      }
+
+      function autoFitHeadingTitle() {
+        if (!headingTitle) return;
+        const titleHost = headingTitle.parentElement || headingTitle;
+        const hostW = titleHost.clientWidth || 0;
+        const hostH = titleHost.clientHeight || 0;
+        const byWidth = hostW > 0 ? Math.round(hostW * 0.13) : 36;
+        const byHeight = hostH > 0 ? Math.round(hostH * 0.62) : 36;
+        const maxFont = Math.max(36, Math.min(52, byWidth, byHeight));
+        const minFont = 24;
+        const step = 1;
+        const maxLines = 2;
+        const originalClamp = headingTitle.style.webkitLineClamp;
+        const originalOverflow = headingTitle.style.overflow;
+        const originalDisplay = headingTitle.style.display;
+
+        let font = maxFont;
+        headingTitle.style.setProperty("--title-font-size", font + "px");
+        headingTitle.style.webkitLineClamp = "unset";
+        headingTitle.style.overflow = "visible";
+        headingTitle.style.display = "block";
+
+        while (font > minFont) {
+          const lineHeightPx = font * 1.2;
+          const maxHeight = lineHeightPx * maxLines;
+          if (headingTitle.scrollHeight <= maxHeight + 0.5) break;
+          font -= step;
+          headingTitle.style.setProperty("--title-font-size", font + "px");
+        }
+
+        headingTitle.style.webkitLineClamp = originalClamp;
+        headingTitle.style.overflow = originalOverflow;
+        headingTitle.style.display = originalDisplay;
       }
 
       let startIndex = 0;
@@ -2708,8 +2770,12 @@
 
       syncSceneBgClass();
       renderStack();
+      autoFitHeadingTitle();
       updateCardScale();
-      window.addEventListener("resize", updateCardScale);
+      window.addEventListener("resize", function () {
+        autoFitHeadingTitle();
+        updateCardScale();
+      });
     })();
   </script>
 </body>
