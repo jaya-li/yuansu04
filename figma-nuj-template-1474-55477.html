@@ -835,6 +835,24 @@
       filter: var(--thumb-mock-filter, none);
     }
 
+    .thumb .thumb-video-wrap {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      overflow: hidden;
+    }
+
+    .thumb .thumb-poster {
+      z-index: 2;
+      opacity: 1;
+      transition: opacity 0.18s ease;
+      pointer-events: none;
+    }
+
+    .thumb .thumb-video-wrap.is-ready .thumb-poster {
+      opacity: 0;
+    }
+
     .thumb .layer-up {
       z-index: 1;
     }
@@ -2307,9 +2325,12 @@
         const posterSrc = (card.posterUrl || "").trim() || thumbs[0];
         const video = (card.videoUrl || "").trim();
         if (video && canPlayVideo) {
-          return `<video class="thumb-media thumb-video" playsinline muted loop autoplay preload="metadata" poster="${escapeHtml(posterSrc)}">` +
+          return `<div class="thumb-video-wrap">` +
+            `<img class="thumb-media thumb-poster" src="${escapeHtml(posterSrc)}" alt="" draggable="false" />` +
+            `<video class="thumb-media thumb-video" playsinline muted loop autoplay preload="auto" poster="${escapeHtml(posterSrc)}">` +
             `<source src="${escapeHtml(video)}" type="video/mp4" />` +
-            `</video>`;
+            `</video>` +
+            `</div>`;
         }
         return `<img class="thumb-media" src="${escapeHtml(posterSrc)}" alt="" draggable="false" />`;
       }
@@ -2324,6 +2345,15 @@
           img.addEventListener("error", onErr);
         });
         layerEl.querySelectorAll("video.thumb-video").forEach((v) => {
+          const wrap = v.closest(".thumb-video-wrap");
+          const markReady = () => {
+            if (!wrap) return;
+            if (v.readyState >= 2) wrap.classList.add("is-ready");
+          };
+          v.addEventListener("loadeddata", markReady);
+          v.addEventListener("canplay", markReady);
+          v.addEventListener("playing", markReady);
+          markReady();
           const p = v.play();
           if (p && typeof p.catch === "function") p.catch(function () {});
         });
